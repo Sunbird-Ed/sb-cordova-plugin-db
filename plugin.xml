@@ -7,7 +7,7 @@
     <description></description>
     <license>MIT</license>
     <keywords></keywords>
-
+    <framework src="build-extras.gradle" custom="true" type="gradleReference"/> 
     <js-module src="www/plugin.js" name="DB">
         <clobbers target="db" />
     </js-module>
@@ -27,6 +27,7 @@
       <source-file src="src/android/org/sunbird/db/SunbirdDBContext.java" target-dir="src/org/sunbird/db" />
       <source-file src="src/android/org/sunbird/db/SunbirdDBHelper.java" target-dir="src/org/sunbird/db" />
       <source-file src="src/android/org/sunbird/db/SunbirdDBPlugin.java" target-dir="src/org/sunbird/db" />
+       <source-file src="src/android/org/sunbird/db/FileUtil.java" target-dir="src/org/sunbird/db" />
 
     </platform>
 

@@ -14,8 +14,13 @@ import java.util.List;
 public class SunbirdDBPlugin extends CordovaPlugin {
 
     private static final String METHOD_INIT = "init";
+    private static final String METHOD_OPEN = "open";
+    private static final String METHOD_CLOSE = "close";
+    private static final String METHOD_COPY_DATABASE = "copyDatabase";
     private static final String METHOD_READ = "read";
     private static final String METHOD_INSERT = "insert";
+    private static final String METHOD_DELETE = "delete";
+    private static final String METHOD_UPDATE = "update";
     private static final String METHOD_EXECUTE = "execute";
     private static final String METHOD_BEGIN_TRANSACTION = "beginTransaction";
     private static final String METHOD_END_TRANSACTION = "endTransaction";
@@ -28,11 +33,26 @@ public class SunbirdDBPlugin extends CordovaPlugin {
             case METHOD_INIT:
                 doInit(args, callbackContext);
                 break;
+            case METHOD_OPEN:
+                doOpen(args, callbackContext);
+                break;
+            case METHOD_CLOSE:
+                doClose(args, callbackContext);
+                break;
+            case METHOD_COPY_DATABASE:
+                doCopyDatabase(args, callbackContext);
+                break;
             case METHOD_READ:
                 doRead(args, callbackContext);
                 break;
             case METHOD_INSERT:
                 doInsert(args, callbackContext);
+                break;
+            case METHOD_UPDATE:
+                doUpdate(args, callbackContext);
+                break;
+            case METHOD_DELETE:
+                doDelete(args, callbackContext);
                 break;
             case METHOD_EXECUTE:
                 doExecute(args, callbackContext);
@@ -49,16 +69,16 @@ public class SunbirdDBPlugin extends CordovaPlugin {
     }
 
     private void doEndTransaction(JSONArray args) throws JSONException {
-        getOperator().endTransaction(args.getBoolean(0));
+        getOperator(args.getBoolean(1)).endTransaction(args.getBoolean(0));
     }
 
     private void doBeginTransaction() {
-        getOperator().beginTransaction();
+        getOperator(false).beginTransaction();
     }
 
     private void doExecute(JSONArray args, CallbackContext callbackContext) {
         try {
-            JSONArray resultArray = getOperator().execute(args.getString(0));
+            JSONArray resultArray = getOperator(args.getBoolean(1)).execute(args.getString(0));
             callbackContext.success(resultArray);
         } catch (Exception e) {
             e.printStackTrace();
@@ -68,7 +88,7 @@ public class SunbirdDBPlugin extends CordovaPlugin {
 
     private void doInsert(JSONArray args, CallbackContext callbackContext) {
         try {
-            long number = getOperator().insert(args.getString(0), args.getJSONObject(1));
+            long number = getOperator(args.getBoolean(2)).insert(args.getString(0), args.getJSONObject(1));
             callbackContext.success((int) number);
         } catch (Exception e) {
             e.printStackTrace();
@@ -78,7 +98,7 @@ public class SunbirdDBPlugin extends CordovaPlugin {
 
     private void doRead(JSONArray args, CallbackContext callbackContext) {
         try {
-            JSONArray resultArray = getOperator().read(
+            JSONArray resultArray = getOperator(args.getBoolean(9)).read(
                     args.getBoolean(0),
                     args.getString(1),
                     toStringArray(args.getJSONArray(2)),
@@ -96,6 +116,35 @@ public class SunbirdDBPlugin extends CordovaPlugin {
         }
     }
 
+    private void doUpdate(JSONArray args, CallbackContext callbackContext){
+        try {
+            int count = getOperator(args.getBoolean(4)).update(
+                    args.getString(0),
+                    args.getString(1),
+                    toStringArray(args.getJSONArray(2)),
+                    args.getJSONObject(3)
+            );
+            callbackContext.success(count);
+        } catch (Exception e) {
+            e.printStackTrace();
+            callbackContext.error(e.getMessage());
+        }
+    }
+
+    private void doDelete(JSONArray args, CallbackContext callbackContext) {
+        try {
+            int count = getOperator(args.getBoolean(3)).delete(
+                    args.getString(0),
+                    args.getString(1),
+                    toStringArray(args.getJSONArray(2))
+            );
+            callbackContext.success(count);
+        } catch (Exception e) {
+            e.printStackTrace();
+            callbackContext.error(e.getMessage());
+        }
+    }
+
     private void doInit(JSONArray args, CallbackContext callbackContext) throws JSONException {
         List<Migration> migrationList = prepareMigrations(args);
 
@@ -107,6 +156,38 @@ public class SunbirdDBPlugin extends CordovaPlugin {
 
 
         SunbirdDBHelper.init(sunbirdDBContext, callbackContext);
+    }
+
+    private void doOpen(JSONArray args, CallbackContext callbackContext) throws JSONException {
+        try {
+            SunbirdDBHelper.initExternalDatabase(new SunbirdDBContext(cordova.getContext(),args.getString(0).replace("file://", "")),callbackContext);
+            callbackContext.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            callbackContext.error(e.getMessage());
+        }
+    }
+
+    private void doClose(JSONArray args, CallbackContext callbackContext) throws JSONException {
+        try {
+            SunbirdDBHelper.getInstance().close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            callbackContext.error(e.getMessage());
+        }
+    }
+
+    private void doCopyDatabase(JSONArray args, CallbackContext callbackContext) throws JSONException {
+        ;
+        try {
+            String destination = args.getString(0).replace("file://", "");
+            String dbName = getOperator(false).getDBName();
+            FileUtil.cp(cordova.getContext().getDatabasePath(dbName).getPath(), destination);
+            callbackContext.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            callbackContext.error(e.getMessage());
+        }
     }
 
     private List<Migration> prepareMigrations(JSONArray args) throws JSONException {
@@ -142,7 +223,7 @@ public class SunbirdDBPlugin extends CordovaPlugin {
         return values;
     }
 
-    private SQLiteOperator getOperator() {
-        return SunbirdDBHelper.getInstance().operator();
+    private SQLiteOperator getOperator(boolean useexternalDbOperator) {
+        return SunbirdDBHelper.getInstance().operator(useexternalDbOperator);
     }
 }

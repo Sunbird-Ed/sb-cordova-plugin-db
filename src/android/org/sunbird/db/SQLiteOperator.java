@@ -3,14 +3,12 @@ package org.sunbird.db;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
-import java.util.List;
 
 public class SQLiteOperator {
 
@@ -41,24 +39,31 @@ public class SQLiteOperator {
             int size = cursor.getCount();
             for (int index = 0; index < size; index++) {
                 JSONObject jsonObject = new JSONObject();
-                switch (cursor.getType(index)) {
-                    case Cursor.FIELD_TYPE_STRING:
-                        jsonObject.put(cursor.getColumnName(index), cursor.getString(index));
-                        break;
-                    case Cursor.FIELD_TYPE_FLOAT:
-                        jsonObject.put(cursor.getColumnName(index), cursor.getFloat(index));
-                        break;
-                    case Cursor.FIELD_TYPE_INTEGER:
-                        jsonObject.put(cursor.getColumnName(index), cursor.getInt(index));
-                        break;
+                int columnCount = cursor.getColumnCount();
+
+                for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+                    switch (cursor.getType(columnIndex)) {
+                        case Cursor.FIELD_TYPE_STRING:
+                            jsonObject.put(cursor.getColumnName(columnIndex), cursor.getString(columnIndex));
+                            break;
+                        case Cursor.FIELD_TYPE_FLOAT:
+                            jsonObject.put(cursor.getColumnName(columnIndex), cursor.getFloat(columnIndex));
+                            break;
+                        case Cursor.FIELD_TYPE_INTEGER:
+                            jsonObject.put(cursor.getColumnName(columnIndex), cursor.getLong(columnIndex));
+                            break;
+                    }
                 }
+
                 jsonArray.put(jsonObject);
+                cursor.moveToNext();
             }
         }
 
         return jsonArray;
 
     }
+
 
 
     public void beginTransaction() {
@@ -90,23 +95,35 @@ public class SQLiteOperator {
             int size = cursor.getCount();
             for (int index = 0; index < size; index++) {
                 JSONObject jsonObject = new JSONObject();
-                switch (cursor.getType(index)) {
-                    case Cursor.FIELD_TYPE_STRING:
-                        jsonObject.put(cursor.getColumnName(index), cursor.getString(index));
+
+                int columnCount = cursor.getColumnCount();
+
+                for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+                    switch (cursor.getType(columnIndex)) {
+                        case Cursor.FIELD_TYPE_BLOB:
+                            jsonObject.put(cursor.getColumnName(columnIndex), new String(cursor.getBlob(2), StandardCharsets.ISO_8859_1));
                         break;
-                    case Cursor.FIELD_TYPE_FLOAT:
-                        jsonObject.put(cursor.getColumnName(index), cursor.getFloat(index));
-                        break;
-                    case Cursor.FIELD_TYPE_INTEGER:
-                        jsonObject.put(cursor.getColumnName(index), cursor.getInt(index));
-                        break;
+                        case Cursor.FIELD_TYPE_STRING:
+                            jsonObject.put(cursor.getColumnName(columnIndex), cursor.getString(columnIndex));
+                            break;
+                        case Cursor.FIELD_TYPE_FLOAT:
+                            jsonObject.put(cursor.getColumnName(columnIndex), cursor.getFloat(columnIndex));
+                            break;
+                        case Cursor.FIELD_TYPE_INTEGER:
+                            jsonObject.put(cursor.getColumnName(columnIndex), cursor.getLong(columnIndex));
+                            break;
+                    }
                 }
+
                 jsonArray.put(jsonObject);
+
+                cursor.moveToNext();
             }
         }
 
         return jsonArray;
     }
+
 
     public long insert(String table, JSONObject jsonObject) throws JSONException {
 
@@ -132,6 +149,36 @@ public class SQLiteOperator {
         }
 
         return database.insert(table, null, values);
+    }
+
+    public int update(String table, String whereClause, String[] whereArgs, JSONObject jsonObject) throws JSONException {
+
+        ContentValues values = new ContentValues();
+
+        Iterator<String> iterator = jsonObject.keys();
+        while (iterator.hasNext()) {
+            String key = iterator.next();
+            Object value = jsonObject.get(key);
+
+            if (value instanceof Integer) {
+                values.put(key, (Integer) value);
+            } else if (value instanceof Long) {
+                values.put(key, (Long) value);
+            } else if (value instanceof String) {
+                values.put(key, (String) value);
+            } else if (value instanceof Float) {
+                values.put(key, (Float) value);
+            } else if (value instanceof Double) {
+                values.put(key, (Double) value);
+            }
+
+        }
+
+        return database.update(table, values, whereClause, whereArgs);
+    }
+
+    public int delete(String table, String whereClause, String[] whereArgs) throws JSONException {
+        return database.delete(table, whereClause, whereArgs);
     }
 
 }

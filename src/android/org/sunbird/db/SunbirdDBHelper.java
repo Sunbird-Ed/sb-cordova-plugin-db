@@ -1,6 +1,5 @@
 package org.sunbird.db;
 
-import android.annotation.SuppressLint;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
@@ -12,8 +11,6 @@ import org.json.JSONObject;
 
 import java.util.List;
 
-import io.reactivex.subjects.PublishSubject;
-import io.reactivex.subjects.Subject;
 
 public class SunbirdDBHelper extends SQLiteOpenHelper {
 
@@ -37,8 +34,8 @@ public class SunbirdDBHelper extends SQLiteOpenHelper {
 
     private SunbirdDBContext sunbirdDBContext;
     private SQLiteOperator sqLiteOperator;
-    private Subject<JSONObject> dbLifecycleSubect;
     private List<Migration> migrationList;
+    private CallbackContext callbackContext;
 
 
     private SunbirdDBHelper(SunbirdDBContext sunbirdDBContext, CallbackContext callbackContext) {
@@ -46,28 +43,23 @@ public class SunbirdDBHelper extends SQLiteOpenHelper {
                 null, sunbirdDBContext.getDbVersion());
         this.sunbirdDBContext = sunbirdDBContext;
         this.migrationList = sunbirdDBContext.getMigrationList();
-        createEventHandler(callbackContext);
+        this.callbackContext = callbackContext;
     }
 
-    @SuppressLint("CheckResult")
-    private void createEventHandler(CallbackContext callbackContext) {
-        this.dbLifecycleSubect = PublishSubject.create();
-        this.dbLifecycleSubect.subscribe(jsonObject -> {
-            PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, jsonObject);
-            pluginResult.setKeepCallback(true);
-
-            callbackContext.sendPluginResult(pluginResult);
-        });
+    private void publishEvent(JSONObject object){
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, object);
+        pluginResult.setKeepCallback(true);
+        this.callbackContext.sendPluginResult(pluginResult);
     }
 
     @Override
     public void onCreate(SQLiteDatabase sqLiteDatabase) {
-        dbLifecycleSubect.toSerialized().onNext(createJsonForOncreate());
+        publishEvent(createJsonForOncreate());
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase sqLiteDatabase, int oldVersion, int newVersion) {
-        dbLifecycleSubect.toSerialized().onNext(createJsonForOnupgrade(oldVersion, newVersion));
+        publishEvent(createJsonForOnupgrade(oldVersion, newVersion));
     }
 
     public void openDataBase(String filePath) throws SQLException {

@@ -40,4 +40,14 @@
             <runs/>
         </js-module>
     </platform>
+        <platform name="ios">
+        <config-file target="config.xml" parent="/*">
+
+            <feature name="db">
+                <param name="ios-package" value="db" />
+            </feature>
+
+        </config-file>
+        <source-file src="src/ios/SunbirdDBPlugin.swift" />
+    </platform>
 </plugin>

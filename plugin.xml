@@ -26,7 +26,7 @@
       <source-file src="src/android/org/sunbird/db/SunbirdDBContext.java" target-dir="src/org/sunbird/db" />
       <source-file src="src/android/org/sunbird/db/SunbirdDBHelper.java" target-dir="src/org/sunbird/db" />
       <source-file src="src/android/org/sunbird/db/SunbirdDBPlugin.java" target-dir="src/org/sunbird/db" />
-       <source-file src="src/android/org/sunbird/db/FileUtil.java" target-dir="src/org/sunbird/db" />
+      <source-file src="src/android/org/sunbird/db/FileUtil.java" target-dir="src/org/sunbird/db" />
 
     </platform>
 
@@ -40,14 +40,14 @@
             <runs/>
         </js-module>
     </platform>
-        <platform name="ios">
-        <config-file target="config.xml" parent="/*">
+    <platform name="ios">
 
+        <config-file target="config.xml" parent="/*">
             <feature name="db">
                 <param name="ios-package" value="db" />
             </feature>
-
         </config-file>
+
         <source-file src="src/ios/SunbirdDBPlugin.swift" />
     </platform>
 </plugin>

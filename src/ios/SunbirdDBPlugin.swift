@@ -19,7 +19,7 @@ import SQLite3
 
     @objc(open:)
     func open(_ command: CDVInvokedUrlCommand) {
-        let pluginResult:CDVPluginResult
+        var pluginResult:CDVPluginResult
         let dbPath = command.arguments[0] as? String ?? ""
         // TODO: update db path to application path 
            let fileURL = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
@@ -39,7 +39,7 @@ import SQLite3
 
     @objc(close:)
     func close(_ command: CDVInvokedUrlCommand) {
-        let pluginResult:CDVPluginResult
+        var pluginResult:CDVPluginResult
         if(sqlite3_close(externalDB)) != SQLITE_OK
         {
             print("error closing the database")
@@ -151,19 +151,59 @@ import SQLite3
         
     }
 
-    @objc
+    @objc(execute:)
     func execute(_ command: CDVInvokedUrlCommand) {
-       
+        var pluginResult:CDVPluginResult
+        let operatorFlag = command.arguments[1] as? Bool ?? false
+        let db = self.getOperator(operatorFlag)
+        var statement: OpaquePointer? = nil
+        var result:Array<Dictionary<String,Any>>=[]
+        guard sqlite3_prepare_v2(db, createTableString, -1, &statement, nil) == SQLITE_OK else {
+            pluginResult = CDVPluginResult.init(status: CDVCommandStatus_ERROR)
+            self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+            return
+        }
+        
+        while sqlite3_step(createTableStatement) == SQLITE_ROW {
+            let columnsCount:Int32 = sqlite3_column_count(createTableStatement)
+            var columnIndex: Int32 = 0;
+            var eachRow:[String: Any] = [:]
+            while column < columnsCount {
+                let columnName = String(cString: sqlite3_column_name(createTableStatement, columnIndex))
+                let columnType = sqlite3_column_type(createTableStatement, columnIndex);
+                if(columnType  == SQLITE_FLOAT){
+                    eachRow[columnName] = Double(sqlite3_column_double(createTableStatement, columnIndex))
+                } else if(columnType  == SQLITE_INTEGER){ 
+                    eachRow[columnName] = Int64(sqlite3_column_int64(createTableStatement, columnIndex))
+                } else if(columnType  == SQLITE_TEXT){     
+                    eachRow[columnName] = String(cString:sqlite3_column_text(createTableStatement, columnIndex) )
+                } else if(columnType  == SQLITE_NULL){     
+                    eachRow[columnName] = nil
+                }
+                columnIndex += 1
+            }
+            result.append(eachRow)
+        }
+        
+        defer {
+            sqlite3_finalize(createTableStatement)
+        }
+         pluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: result)
+         self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
     }
 
-    @objc
+    @objc(beginTransaction:)
     func beginTransaction(_ command: CDVInvokedUrlCommand) {
-        
+         //TODO: will implement after undstanding it
+        let pluginResult:CDVPluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: "Skipping beginTransaction")
+        self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
     }
 
-    @objc
+    @objc(endTransaction:)
     func endTransaction(_ command: CDVInvokedUrlCommand) {
-        
+         //TODO: will implement after undstanding it
+        let pluginResult:CDVPluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: "Skipping endTransaction")
+        self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
     }
      
     private getOperator(useexternalDbOperator: Bool) -> OpaquePointer{

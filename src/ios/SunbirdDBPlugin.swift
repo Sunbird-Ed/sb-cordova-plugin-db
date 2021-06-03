@@ -147,13 +147,13 @@ import SQLite3
         var pluginResult = CDVPluginResult.init(status: CDVCommandStatus_ERROR)    
         let table = command.arguments[0] as? String
         let operatorFlag = command.arguments[3] as? Bool ?? false
-        let whereCalse = command.arguments[1] as? String ?? ""
         let db = self.getOperator(operatorFlag)
+        let whereClause = command.arguments[1] as? String ?? ""
         let whereArgs = command.arguments[2] as? [String] ?? [String]()
-        let statementStirng = "DELETE FROM \(table) WHERE \(whereCalse);"
+        let statementString = "DELETE FROM \(table) WHERE \(whereClause);"
         var statement: OpaquePointer? = nil
 
-        guard sqlite3_prepare_v2(db, statementStirng, -1, &statement, nil) == SQLITE_OK else {
+        guard sqlite3_prepare_v2(db, statementString, -1, &statement, nil) == SQLITE_OK else {
             print("DELETE statement could not be prepared")
             self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
             return
@@ -174,12 +174,75 @@ import SQLite3
         let deletedCount  = sqlite3_changes(db)
         sqlite3_finalize(statement)
         print("Deleted count: ", deletedCount)
-        pluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: deletedCount)    
+        pluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: deletedCount)  
+        self.commandDelegate.send(pluginResult, callbackId: command.callbackId)  
     }
 
-    @objc
+    @objc(update:)
     func update(_ command: CDVInvokedUrlCommand) {
-        
+        var pluginResult = CDVPluginResult.init(status: CDVCommandStatus_ERROR)    
+        let table = command.arguments[0] as? String
+        let operatorFlag = command.arguments[4] as? Bool ?? false
+        let db = self.getOperator(operatorFlag)
+        let whereClause = command.arguments[1] as? String ?? ""
+        let updateValues: [String: Any] = command.arguments[3] as? [String] ?? [String]()
+        let whereArgs =  command.arguments[2] as? [String] ?? [String]()
+        var statementString = "UPDATE \(table) SET " + updateValues.keys.joined(separator: " = ?, ") + " = ? WHERE \(whereClause)"
+        var statement: OpaquePointer? = nil
+        guard sqlite3_prepare_v2(db, statementString, -1, &statement, nil) == SQLITE_OK else {
+            print("UPDATE statement could not be prepared")
+            self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+            return
+        }
+        var valueIndex: Int32 = 1
+        let SQLITE_TRANSIENT = unsafeBitCast(OpaquePointer(bitPattern: -1), to: sqlite3_destructor_type.self)
+        for (key, value) in updateValues {
+            if let value = value as? String {
+                guard sqlite3_bind_text(statement, valueIndex, value as! String, -1, SQLITE_TRANSIENT) == SQLITE_OK else {
+                    let errmsg = String(cString: sqlite3_errmsg(db)!)
+                    print("sqlite3_bind_text failed with \(value) at index \(valueIndex)")
+                    self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+                    return
+                }
+            } else if let value = value as? Int {
+                guard sqlite3_bind_int64(statement, valueIndex, Int64(value)) == SQLITE_OK  else {
+                    print("sqlite3_bind_int failed with \(value) at index \(valueIndex)")
+                    self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+                    return
+                }
+            }  else if(value is Int32) {
+                guard sqlite3_bind_int(statement, valueIndex, value as! Int32) == SQLITE_OK else {
+                    print("sqlite3_bind_int failed with \(value) at index \(valueIndex)")
+                    self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+                    return
+                }
+            } else if(value is Double) {
+                guard sqlite3_bind_double(statement, valueIndex, value as! Double) == SQLITE_OK else {
+                    print("sqlite3_bind_double failed with \(value) at index \(valueIndex)")
+                    self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+                    return
+                }
+            }
+            valueIndex += 1
+        }
+        for (index, value) in whereArgs.enumerated() {
+           guard sqlite3_bind_text(statement, valueIndex, value, -1, SQLITE_TRANSIENT) == SQLITE_OK else {
+               print("Unable to bind the data \(value)")
+               self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+               return
+           }
+           valueIndex += 1
+        }
+        guard sqlite3_step(statement) == SQLITE_DONE  else {
+                print("Could not update row.")
+                self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+                return
+        }
+        let updatedCount  = sqlite3_changes(db)
+        print("Updated count: ", updatedCount)
+        sqlite3_finalize(statement)
+        pluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: updatedCount)  
+        self.commandDelegate.send(pluginResult, callbackId: command.callbackId)  
     }
 
     @objc(execute:)
@@ -197,11 +260,11 @@ import SQLite3
         
         while sqlite3_step(createTableStatement) == SQLITE_ROW {
             let columnsCount:Int32 = sqlite3_column_count(createTableStatement)
-            var columnIndex: Int32 = 0;
+            var columnIndex: Int32 = 0
             var eachRow:[String: Any] = [:]
             while column < columnsCount {
                 let columnName = String(cString: sqlite3_column_name(createTableStatement, columnIndex))
-                let columnType = sqlite3_column_type(createTableStatement, columnIndex);
+                let columnType = sqlite3_column_type(createTableStatement, columnIndex)
                 if(columnType  == SQLITE_FLOAT){
                     eachRow[columnName] = Double(sqlite3_column_double(createTableStatement, columnIndex))
                 } else if(columnType  == SQLITE_INTEGER){ 
@@ -245,7 +308,7 @@ import SQLite3
             .appendingPathComponent(self.name)
             if sqlite3_open(fileURL.path, &db) != SQLITE_OK
             {
-                return nil;
+                return nil
             }
             else
             {

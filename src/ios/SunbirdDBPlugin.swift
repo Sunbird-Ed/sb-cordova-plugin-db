@@ -78,7 +78,7 @@ import SQLite3
      
     @objc 
     func insert(_ command: CDVInvokedUrlCommand) {
-            pluginResult = CDVPluginResult.init(status: CDVCommandStatus_ERROR)    
+        var pluginResult = CDVPluginResult.init(status: CDVCommandStatus_ERROR)    
             let operatorFlag = command.arguments[2] as? Bool ?? false
             let db = self.getOperator(operatorFlag)
             let table = command.arguments[0] as? String
@@ -141,9 +141,40 @@ import SQLite3
         self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
     }
     
-    @objc
+    @objc(delete:)
     func delete(_ command: CDVInvokedUrlCommand) {
-        
+
+        var pluginResult = CDVPluginResult.init(status: CDVCommandStatus_ERROR)    
+        let table = command.arguments[0] as? String
+        let operatorFlag = command.arguments[3] as? Bool ?? false
+        let whereCalse = command.arguments[1] as? String ?? ""
+        let db = self.getOperator(operatorFlag)
+        let whereArgs = command.arguments[2] as? [String] ?? [String]()
+        let statementStirng = "DELETE FROM \(table) WHERE \(whereCalse);"
+        var statement: OpaquePointer? = nil
+
+        guard sqlite3_prepare_v2(db, statementStirng, -1, &statement, nil) == SQLITE_OK else {
+            print("DELETE statement could not be prepared")
+            self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+            return
+        }
+        let SQLITE_TRANSIENT = unsafeBitCast(OpaquePointer(bitPattern: -1), to: sqlite3_destructor_type.self)
+        for (index, value) in whereArgs.enumerated() {
+           guard sqlite3_bind_text(statement, Int32((index + 1)), value, -1, SQLITE_TRANSIENT) == SQLITE_OK else {
+               print("Unable to bind the data \(value)")
+               self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+               return
+           }
+        }
+        guard sqlite3_step(statement) == SQLITE_DONE  else {
+                print("Could not delete row.")
+                self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+                return
+        }
+        let deletedCount  = sqlite3_changes(db)
+        sqlite3_finalize(statement)
+        print("Deleted count: ", deletedCount)
+        pluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: deletedCount)    
     }
 
     @objc

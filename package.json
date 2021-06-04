@@ -4,7 +4,8 @@
   "cordova": {
     "id": "sb-cordova-plugin-db",
     "platforms": [
-      "android"
+      "android",
+      "ios"
     ]
   },
   "dependencies": {

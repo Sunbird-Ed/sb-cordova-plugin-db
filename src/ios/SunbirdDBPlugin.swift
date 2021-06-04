@@ -19,37 +19,30 @@ import SQLite3
 
     @objc(open:)
     func open(_ command: CDVInvokedUrlCommand) {
-        var pluginResult:CDVPluginResult
+        var pluginResult: CDVPluginResult = CDVPluginResult.init(status: CDVCommandStatus_ERROR)
         let dbPath = command.arguments[0] as? String ?? ""
-        // TODO: update db path to application path 
-           let fileURL = try! FileManager.default.url(for: .applicationDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+        let fileURL = try! FileManager.default.url(for: .applicationDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
             .appendingPathComponent(dbPath)
-        if sqlite3_open(fileURL.path, &externalDB) != SQLITE_OK
-        {
-            print("error opening database")
-            pluginResult = CDVPluginResult.init(status: CDVCommandStatus_ERROR)
+        guard sqlite3_open(fileURL.path, &externalDB) == SQLITE_OK else {
+            print("error opening database at path \(fileURL.path)")
+            self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+            return
         }
-        else
-        {
-            print("Successfully opened connection to database at \(dbPath)")
-            pluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: "Successfully opened connection to database at \(dbPath)")
-        }
+        print("Successfully opened connection to database at path \(fileURL.path)")
+        pluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: "Successfully opened connection to database at \(dbPath)")
         self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
     }
 
     @objc(close:)
     func close(_ command: CDVInvokedUrlCommand) {
-        var pluginResult:CDVPluginResult
-        if(sqlite3_close(externalDB)) != SQLITE_OK
-        {
-            print("error closing the database")
-            pluginResult = CDVPluginResult.init(status: CDVCommandStatus_ERROR)
+        var pluginResult: CDVPluginResult = CDVPluginResult.init(status: CDVCommandStatus_ERROR)
+        guard sqlite3_close(externalDB) == SQLITE_OK else {
+             print("error closing the database")
+             self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+             return
         }
-        else
-        {
-            print("Successfully closed connection to database")
-            pluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: "Successfully closed connection to database")
-        }
+        print("Successfully closed connection to database")
+        pluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: "Successfully closed connection to database")
         self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
     }
 
@@ -74,7 +67,12 @@ import SQLite3
         let orderBy = command.arguments[7] as? String ?? ""
         let limit = command.arguments[8] as? String ?? ""
         let db = self.getOperator(operatorFlag)
-
+        if db == nil {
+            print("DB object null from getOperator")
+            self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+            return
+        }
+        
         var queryString = "SELECT";
         if distinct == true {
             queryString += "DISTINCT " 
@@ -101,6 +99,14 @@ import SQLite3
         }
 
         var statement: OpaquePointer? = nil
+        let SQLITE_TRANSIENT = unsafeBitCast(OpaquePointer(bitPattern: -1), to: sqlite3_destructor_type.self)
+        for (index, value) in selectionArgs.enumerated() {
+           guard sqlite3_bind_text(statement, Int32((index + 1)), value, -1, SQLITE_TRANSIENT) == SQLITE_OK else {
+               print("Unable to bind the data \(value)")
+               self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+               return
+           }
+        }
         var result:Array<Dictionary<String,Any>>=[]
         guard sqlite3_prepare_v2(db, queryString, -1, &statement, nil) == SQLITE_OK else {
             self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
@@ -139,9 +145,15 @@ import SQLite3
      
     @objc(insert:) 
     func insert(_ command: CDVInvokedUrlCommand) {
+
         var pluginResult = CDVPluginResult.init(status: CDVCommandStatus_ERROR)    
             let operatorFlag = command.arguments[2] as? Bool ?? false
             let db = self.getOperator(operatorFlag)
+            if db == nil {
+                print("DB object null from getOperator")
+                self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+                return
+            }
             let table = command.arguments[0] as? String
             let data = command.arguments[1] as? [String: Any]
             var queryStringQuestionString = ""
@@ -209,6 +221,11 @@ import SQLite3
         let table = command.arguments[0] as? String
         let operatorFlag = command.arguments[3] as? Bool ?? false
         let db = self.getOperator(operatorFlag)
+        if db == nil {
+            print("DB object null from getOperator")
+            self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+            return
+        }
         let whereClause = command.arguments[1] as? String ?? ""
         let whereArgs = command.arguments[2] as? [String] ?? [String]()
         let statementString = "DELETE FROM \(table) WHERE \(whereClause);"
@@ -222,13 +239,13 @@ import SQLite3
         let SQLITE_TRANSIENT = unsafeBitCast(OpaquePointer(bitPattern: -1), to: sqlite3_destructor_type.self)
         for (index, value) in whereArgs.enumerated() {
            guard sqlite3_bind_text(statement, Int32((index + 1)), value, -1, SQLITE_TRANSIENT) == SQLITE_OK else {
-               print("Unable to bind the data \(value)")
+               print("Unable to bind the data \(value) while running delete call")
                self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
                return
            }
         }
         guard sqlite3_step(statement) == SQLITE_DONE  else {
-                print("Could not delete row.")
+                print("Could not delete data.")
                 self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
                 return
         }
@@ -245,6 +262,11 @@ import SQLite3
         let table = command.arguments[0] as? String
         let operatorFlag = command.arguments[4] as? Bool ?? false
         let db = self.getOperator(operatorFlag)
+        if db == nil {
+            print("DB object null from getOperator")
+            self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+            return
+        }
         let whereClause = command.arguments[1] as? String ?? ""
         let updateValues: [String: Any] = command.arguments[3] as? [String] ?? [String]()
         let whereArgs =  command.arguments[2] as? [String] ?? [String]()
@@ -312,6 +334,11 @@ import SQLite3
         let operatorFlag = command.arguments[1] as? Bool ?? false
         let statementString = command.arguments[0] as? String 
         let db = self.getOperator(operatorFlag)
+        if db == nil {
+            print("DB object null from getOperator")
+            self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+            return
+        }
         var statement: OpaquePointer? = nil
         var result:Array<Dictionary<String,Any>>=[]
         guard sqlite3_prepare_v2(db, statementString, -1, &statement, nil) == SQLITE_OK else {

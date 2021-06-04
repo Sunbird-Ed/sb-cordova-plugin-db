@@ -22,7 +22,7 @@ import SQLite3
         var pluginResult:CDVPluginResult
         let dbPath = command.arguments[0] as? String ?? ""
         // TODO: update db path to application path 
-           let fileURL = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+           let fileURL = try! FileManager.default.url(for: .applicationDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
             .appendingPathComponent(dbPath)
         if sqlite3_open(fileURL.path, &externalDB) != SQLITE_OK
         {
@@ -60,23 +60,84 @@ import SQLite3
         self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
     }
 
-    @objc
+    @objc(read:)
     func read(_ command: CDVInvokedUrlCommand) {
+        var pluginResult:CDVPluginResult = CDVPluginResult.init(status: CDVCommandStatus_ERROR)
         let operatorFlag = command.arguments[9] as? Bool ?? false
         let distinct = command.arguments[0] as? Bool ?? false
         let table = command.arguments[1] as? String ?? ""
-        let columns = command.arguments[2] as? String[] ?? nil
+        let columns = command.arguments[2] as? [String] ?? nil
         let selection = command.arguments[3] as? String ?? ""
-        let selectionArgs = command.arguments[2] as? String[] ?? nil
-        let groupBy = command.arguments[1] as? String ?? ""
-        let having = command.arguments[1] as? String ?? ""
-        let orderBy = command.arguments[1] as? String ?? ""
-        let limit = command.arguments[1] as? String ?? ""
+        let selectionArgs = command.arguments[4] as? [String] ?? nil
+        let groupBy = command.arguments[5] as? String ?? ""
+        let having = command.arguments[6] as? String ?? ""
+        let orderBy = command.arguments[7] as? String ?? ""
+        let limit = command.arguments[8] as? String ?? ""
         let db = self.getOperator(operatorFlag)
 
+        var queryString = "SELECT";
+        if distinct == true {
+            queryString += "DISTINCT " 
+        } else if(columns.count > 0) {
+            queryString += columns.joined(separator: ", ")
+        } else {
+            queryString += " * "
+        }
+        queryString += " FROM \(table) "
+        if selection != "" {
+            queryString += " WHERE " + selection
+        }
+        if groupBy != "" {
+            queryString += "GROUP BY " + groupBy
+        }
+        if having != "" {
+            queryString += "HAVING " + having
+        }
+        if orderBy != "" {
+            queryString += "ORDER BY " + orderBy
+        }
+        if limit != "" {
+            queryString += "LIMIT " + limit
+        }
+
+        var statement: OpaquePointer? = nil
+        var result:Array<Dictionary<String,Any>>=[]
+        guard sqlite3_prepare_v2(db, queryString, -1, &statement, nil) == SQLITE_OK else {
+            self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+            return
+        }
+        
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let columnsCount:Int32 = sqlite3_column_count(statement)
+            var columnIndex: Int32 = 0
+            var eachRow:[String: Any] = [:]
+            while column < columnsCount {
+                let columnName = String(cString: sqlite3_column_name(statement, columnIndex))
+                let columnType = sqlite3_column_type(statement, columnIndex)
+                if(columnType  == SQLITE_FLOAT){
+                    eachRow[columnName] = Double(sqlite3_column_double(statement, columnIndex))
+                } else if(columnType  == SQLITE_INTEGER){ 
+                    eachRow[columnName] = Int64(sqlite3_column_int64(statement, columnIndex))
+                } else if(columnType  == SQLITE_TEXT){     
+                    eachRow[columnName] = String(cString:sqlite3_column_text(statement, columnIndex) )
+                } else if(columnType  == SQLITE_NULL){     
+                    eachRow[columnName] = nil
+                } else if(columnType == SQLITE_BLOB) {
+                    eachRow[columnName] = String(cString:sqlite3_column_blob(statement, columnIndex) )
+                }
+                columnIndex += 1
+            }
+            result.append(eachRow)
+        }
+        
+        defer {
+            sqlite3_finalize(statement)
+        }
+         pluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: result)
+         self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
     }
      
-    @objc 
+    @objc(insert:) 
     func insert(_ command: CDVInvokedUrlCommand) {
         var pluginResult = CDVPluginResult.init(status: CDVCommandStatus_ERROR)    
             let operatorFlag = command.arguments[2] as? Bool ?? false
@@ -247,30 +308,30 @@ import SQLite3
 
     @objc(execute:)
     func execute(_ command: CDVInvokedUrlCommand) {
-        var pluginResult:CDVPluginResult
+        var pluginResult:CDVPluginResult = CDVPluginResult.init(status: CDVCommandStatus_ERROR)
         let operatorFlag = command.arguments[1] as? Bool ?? false
+        let statementString = command.arguments[0] as? String 
         let db = self.getOperator(operatorFlag)
         var statement: OpaquePointer? = nil
         var result:Array<Dictionary<String,Any>>=[]
-        guard sqlite3_prepare_v2(db, createTableString, -1, &statement, nil) == SQLITE_OK else {
-            pluginResult = CDVPluginResult.init(status: CDVCommandStatus_ERROR)
+        guard sqlite3_prepare_v2(db, statementString, -1, &statement, nil) == SQLITE_OK else {
             self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
             return
         }
         
-        while sqlite3_step(createTableStatement) == SQLITE_ROW {
-            let columnsCount:Int32 = sqlite3_column_count(createTableStatement)
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let columnsCount:Int32 = sqlite3_column_count(statement)
             var columnIndex: Int32 = 0
             var eachRow:[String: Any] = [:]
             while column < columnsCount {
-                let columnName = String(cString: sqlite3_column_name(createTableStatement, columnIndex))
-                let columnType = sqlite3_column_type(createTableStatement, columnIndex)
+                let columnName = String(cString: sqlite3_column_name(statement, columnIndex))
+                let columnType = sqlite3_column_type(statement, columnIndex)
                 if(columnType  == SQLITE_FLOAT){
-                    eachRow[columnName] = Double(sqlite3_column_double(createTableStatement, columnIndex))
+                    eachRow[columnName] = Double(sqlite3_column_double(statement, columnIndex))
                 } else if(columnType  == SQLITE_INTEGER){ 
-                    eachRow[columnName] = Int64(sqlite3_column_int64(createTableStatement, columnIndex))
+                    eachRow[columnName] = Int64(sqlite3_column_int64(statement, columnIndex))
                 } else if(columnType  == SQLITE_TEXT){     
-                    eachRow[columnName] = String(cString:sqlite3_column_text(createTableStatement, columnIndex) )
+                    eachRow[columnName] = String(cString:sqlite3_column_text(statement, columnIndex) )
                 } else if(columnType  == SQLITE_NULL){     
                     eachRow[columnName] = nil
                 }
@@ -280,7 +341,7 @@ import SQLite3
         }
         
         defer {
-            sqlite3_finalize(createTableStatement)
+            sqlite3_finalize(statement)
         }
          pluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: result)
          self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
@@ -304,7 +365,7 @@ import SQLite3
         if useexternalDbOperator === true {
             return externalDB
         } else {
-            let fileURL = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+            let fileURL = try! FileManager.default.url(for: .applicationDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
             .appendingPathComponent(self.name)
             if sqlite3_open(fileURL.path, &db) != SQLITE_OK
             {

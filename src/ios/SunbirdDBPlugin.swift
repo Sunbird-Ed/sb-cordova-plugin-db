@@ -9,10 +9,10 @@ import SQLite3
     private var externalDB: OpaquePointer? = nil
 
     @objc(init:)
-    func init(_ command: CDVInvokedUrlCommand) {
+    func `init`(_ command: CDVInvokedUrlCommand) {
         name = command.arguments[0] as? String ?? ""
         version = command.arguments[1] as? Int ?? 3
-        let pluginResult:CDVPluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: "Successfully initilized with \(name).")
+        let pluginResult:CDVPluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: "Successfully initilized with \(String(describing: name)).")
         self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
         // Migration list is not stored
     }
@@ -117,7 +117,7 @@ import SQLite3
             let columnsCount:Int32 = sqlite3_column_count(statement)
             var columnIndex: Int32 = 0
             var eachRow:[String: Any] = [:]
-            while column < columnsCount {
+            while columnIndex < columnsCount {
                 let columnName = String(cString: sqlite3_column_name(statement, columnIndex))
                 let columnType = sqlite3_column_type(statement, columnIndex)
                 if(columnType  == SQLITE_FLOAT){
@@ -185,13 +185,13 @@ import SQLite3
                         self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
                         return
                     }
-                }  else if let value = value as? Int32 {{
+                }  else if let value = value as? Int32 {
                     guard sqlite3_bind_int(statement, valueIndex, value as! Int32) == SQLITE_OK else {
                         print("sqlite3_bind_int failed with \(value) at index \(valueIndex)")
                         self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
                         return
                     }
-                } else if let value = value as? Double {{
+                } else if let value = value as? Double {
                      guard sqlite3_bind_double(statement, valueIndex, value as! Double) == SQLITE_OK else {
                         print("sqlite3_bind_double failed with \(value) at index \(valueIndex)")
                         self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
@@ -350,7 +350,7 @@ import SQLite3
             let columnsCount:Int32 = sqlite3_column_count(statement)
             var columnIndex: Int32 = 0
             var eachRow:[String: Any] = [:]
-            while column < columnsCount {
+            while columnIndex < columnsCount {
                 let columnName = String(cString: sqlite3_column_name(statement, columnIndex))
                 let columnType = sqlite3_column_type(statement, columnIndex)
                 if(columnType  == SQLITE_FLOAT){
@@ -388,12 +388,12 @@ import SQLite3
         self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
     }
      
-    private getOperator(useexternalDbOperator: Bool) -> OpaquePointer{
-        if useexternalDbOperator === true {
+    private getOperator(useexternalDbOperator: Bool) -> OpaquePointer?{
+        if useexternalDbOperator == true {
             return externalDB
         } else {
             let fileURL = try! FileManager.default.url(for: .applicationDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
-            .appendingPathComponent(self.name)
+            .appendingPathComponent(self.name!)
             if sqlite3_open(fileURL.path, &db) != SQLITE_OK
             {
                 return nil

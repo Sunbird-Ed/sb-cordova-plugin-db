@@ -270,7 +270,7 @@ import SQLite3
             return
         }
         let whereClause = command.arguments[1] as? String ?? ""
-        let updateValues: [String: Any] = command.arguments[3] as? [String] ?? [String]()
+        let updateValues: [String: Any] = command.arguments[3] as? [String: Any] ?? [:]
         let whereArgs =  command.arguments[2] as? [String] ?? [String]()
         var statementString = "UPDATE \(table) SET " + updateValues.keys.joined(separator: " = ?, ") + " = ? WHERE \(whereClause)"
         var statement: OpaquePointer? = nil

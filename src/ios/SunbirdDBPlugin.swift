@@ -59,9 +59,9 @@ import SQLite3
         let operatorFlag = command.arguments[9] as? Bool ?? false
         let distinct = command.arguments[0] as? Bool ?? false
         let table = command.arguments[1] as? String ?? ""
-        let columns = command.arguments[2] as? [String] ?? nil
+        let columns = command.arguments[2] as? [String] ?? []
         let selection = command.arguments[3] as? String ?? ""
-        let selectionArgs = command.arguments[4] as? [String] ?? nil
+        let selectionArgs = command.arguments[4] as? [String] ?? []
         let groupBy = command.arguments[5] as? String ?? ""
         let having = command.arguments[6] as? String ?? ""
         let orderBy = command.arguments[7] as? String ?? ""
@@ -129,7 +129,15 @@ import SQLite3
                 } else if(columnType  == SQLITE_NULL){     
                     eachRow[columnName] = nil
                 } else if(columnType == SQLITE_BLOB) {
-                    eachRow[columnName] = String(cString:sqlite3_column_blob(statement, columnIndex) )
+                    //TODO
+                    // eachRow[columnName] = String(cString:sqlite3_column_blob(statement, columnIndex) )
+                    let blob = sqlite3_column_blob(statement, columnIndex);
+                    if blob != nil {
+                        let size = sqlite3_column_bytes(statement, columnIndex)
+                        eachRow[columnName] = NSData(bytes: blob, length: Int(size))
+                    }else{
+                        eachRow[columnName] = nil;
+                    }
                 }
                 columnIndex += 1
             }
@@ -157,12 +165,12 @@ import SQLite3
             let table = command.arguments[0] as? String
             let data = command.arguments[1] as? [String: Any]
             var queryStringQuestionString = ""
-            for _ in 1..<data.keys.count {
+            for _ in 1..<data!.keys.count {
                 queryStringQuestionString += "?,"
             }
             queryStringQuestionString += "?"
             var statement: OpaquePointer?
-            let queryString = "INSERT INTO \(table) (\(data.keys.joined(separator: ","))) VALUES (\(queryStringQuestionString))"
+            let queryString = "INSERT INTO \(table) (\(data!.keys.joined(separator: ","))) VALUES (\(queryStringQuestionString))"
             guard sqlite3_prepare_v2(db, queryString, -1, &statement, nil) == SQLITE_OK else {
                 let errmsg = String(cString: sqlite3_errmsg(externalDB)!)
                 print("error preparing insert: \(errmsg)")
@@ -212,7 +220,10 @@ import SQLite3
             defer {
                 sqlite3_finalize(statement)
             }
-        pluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: rowId)    
+
+            //TODO
+            print(rowId)
+        pluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: rowId.hashValue)    
         self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
     }
     
@@ -390,7 +401,7 @@ import SQLite3
         self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
     }
      
-    private getOperator(useexternalDbOperator: Bool) -> OpaquePointer?{
+    private func getOperator(_ useexternalDbOperator: Bool) -> OpaquePointer?{
         if useexternalDbOperator == true {
             return externalDB
         } else {

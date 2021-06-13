@@ -171,34 +171,36 @@ import SQLite3
             }
             var valueIndex: Int32 = 1
             let SQLITE_TRANSIENT = unsafeBitCast(OpaquePointer(bitPattern: -1), to: sqlite3_destructor_type.self)
-            for (key, value) in data {
-                if let value = value as? String {
-                    guard sqlite3_bind_text(statement, valueIndex, value as! String, -1, SQLITE_TRANSIENT) == SQLITE_OK else {
-                        let errmsg = String(cString: sqlite3_errmsg(externalDB)!)
-                        print("sqlite3_bind_text failed with \(value) at index \(valueIndex)")
-                        self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
-                        return
+            if let data = data {
+                for (key, value) in data {
+                    if let value = value as? String {
+                        guard sqlite3_bind_text(statement, valueIndex, value as! String, -1, SQLITE_TRANSIENT) == SQLITE_OK else {
+                            let errmsg = String(cString: sqlite3_errmsg(externalDB)!)
+                            print("sqlite3_bind_text failed with \(value) at index \(valueIndex)")
+                            self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+                            return
+                        }
+                    } else if let value = value as? Int {
+                        guard sqlite3_bind_int64(statement, valueIndex, Int64(value)) == SQLITE_OK  else {
+                            print("sqlite3_bind_int failed with \(value) at index \(valueIndex)")
+                            self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+                            return
+                        }
+                    }  else if let value = value as? Int32 {
+                        guard sqlite3_bind_int(statement, valueIndex, value as! Int32) == SQLITE_OK else {
+                            print("sqlite3_bind_int failed with \(value) at index \(valueIndex)")
+                            self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+                            return
+                        }
+                    } else if let value = value as? Double {
+                        guard sqlite3_bind_double(statement, valueIndex, value as! Double) == SQLITE_OK else {
+                            print("sqlite3_bind_double failed with \(value) at index \(valueIndex)")
+                            self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
+                            return
+                        }
                     }
-                } else if let value = value as? Int {
-                    guard sqlite3_bind_int64(statement, valueIndex, Int64(value)) == SQLITE_OK  else {
-                        print("sqlite3_bind_int failed with \(value) at index \(valueIndex)")
-                        self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
-                        return
-                    }
-                }  else if let value = value as? Int32 {
-                    guard sqlite3_bind_int(statement, valueIndex, value as! Int32) == SQLITE_OK else {
-                        print("sqlite3_bind_int failed with \(value) at index \(valueIndex)")
-                        self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
-                        return
-                    }
-                } else if let value = value as? Double {
-                     guard sqlite3_bind_double(statement, valueIndex, value as! Double) == SQLITE_OK else {
-                        print("sqlite3_bind_double failed with \(value) at index \(valueIndex)")
-                        self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
-                        return
-                    }
+                    valueIndex += 1
                 }
-                valueIndex += 1
             }
 
             guard sqlite3_step(statement) == SQLITE_DONE else {

@@ -406,7 +406,7 @@ import SQLite3
             return externalDB
         } else {
             let fileURL = try! FileManager.default.url(for: .applicationDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
-            .appendingPathComponent(self.name!)
+                .appendingPathComponent(self.name ?? "")
             if sqlite3_open(fileURL.path, &db) != SQLITE_OK
             {
                 return nil

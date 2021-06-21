@@ -90,16 +90,16 @@ import SQLite3
             queryString += " WHERE " + selection
         }
         if groupBy != "" {
-            queryString += "GROUP BY " + groupBy
+            queryString += " GROUP BY " + groupBy
         }
         if having != "" {
-            queryString += "HAVING " + having
+            queryString += " HAVING " + having
         }
         if orderBy != "" {
-            queryString += "ORDER BY " + orderBy
+            queryString += " ORDER BY " + orderBy
         }
         if limit != "" {
-            queryString += "LIMIT " + limit
+            queryString += " LIMIT " + limit
         }
 
         var statement: OpaquePointer? = nil

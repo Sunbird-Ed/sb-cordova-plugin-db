@@ -7,11 +7,14 @@ import SQLite3
     private var version: Int? = nil
     private var db: OpaquePointer? = nil
     private var externalDB: OpaquePointer? = nil
+    private var dbHelper: DBHelper = DBHelper()
 
     @objc(init:)
     func `init`(_ command: CDVInvokedUrlCommand) {
         name = command.arguments[0] as? String ?? ""
         version = command.arguments[1] as? Int ?? 3
+        DBContext.name = name!;
+        DBContext.version = version!;
         let pluginResult:CDVPluginResult = CDVPluginResult.init(status: CDVCommandStatus_OK, messageAs: ["method": "onCreate"])
         self.commandDelegate.send(pluginResult, callbackId: command.callbackId)
         // Migration list is not stored
@@ -23,7 +26,7 @@ import SQLite3
         let dbPath = command.arguments[0] as! String
         let fileURL = try! FileManager.default.url(for: .applicationDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
             .appendingPathComponent(dbPath)
-        if createDatabaseFile(dbPath) != true {
+        if dbHelper.createDatabaseFile(dbPath) != true {
             print("error creating database file at path \(dbPath)")
         }
         guard sqlite3_open_v2(dbPath, &externalDB, SQLITE_OPEN_READWRITE, nil) != SQLITE_OK else {
@@ -422,28 +425,8 @@ import SQLite3
         if useexternalDbOperator == true {
             return externalDB
         } else {
-            let databaseFilePath = "\(NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0])/\(self.name!)"
-            if createDatabaseFile(databaseFilePath) != true {
-                return nil
-            }
-            if sqlite3_open_v2(databaseFilePath, &db, SQLITE_OPEN_READWRITE, nil) != SQLITE_OK
-            {
-                print("Error message: \(String(cString: sqlite3_errmsg(db)!)) Code:  \(sqlite3_errcode(db)) Method: getOperator")
-                return nil
-            }
-            else
-            {
-                return db
-            }
+            return DBContext.getOperator()
         }
-    }
-
-    private func createDatabaseFile(_ filePath: String) -> Bool {
-        let fileMang = FileManager.default
-        if fileMang.fileExists(atPath: filePath) {
-          return true
-        }
-        return fileMang.createFile(atPath: filePath, contents: nil, attributes: nil)
     }
 }
 

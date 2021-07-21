@@ -26,7 +26,7 @@
       <source-file src="src/android/org/sunbird/db/SunbirdDBContext.java" target-dir="src/org/sunbird/db" />
       <source-file src="src/android/org/sunbird/db/SunbirdDBHelper.java" target-dir="src/org/sunbird/db" />
       <source-file src="src/android/org/sunbird/db/SunbirdDBPlugin.java" target-dir="src/org/sunbird/db" />
-       <source-file src="src/android/org/sunbird/db/FileUtil.java" target-dir="src/org/sunbird/db" />
+      <source-file src="src/android/org/sunbird/db/FileUtil.java" target-dir="src/org/sunbird/db" />
 
     </platform>
 
@@ -39,5 +39,18 @@
         <js-module src="src/browser/DBProxy.js" name="DBProxy">
             <runs/>
         </js-module>
+    </platform>
+    <platform name="ios">
+        
+        <preference name="UseSwiftLanguageVersion" value="4" />
+
+        <config-file target="config.xml" parent="/*">
+            <feature name="db">
+                <param name="ios-package" value="SunbirdDBPlugin" />
+            </feature>
+        </config-file>
+        <source-file src="src/ios/DBHelper.swift" />
+        <source-file src="src/ios/DBContext.swift" />
+        <source-file src="src/ios/SunbirdDBPlugin.swift" />
     </platform>
 </plugin>

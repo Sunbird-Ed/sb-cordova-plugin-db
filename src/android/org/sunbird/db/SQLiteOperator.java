@@ -3,6 +3,11 @@ package org.sunbird.db;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteCursor;
+import android.database.CursorWindow;
+
+
+import android.os.Build;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -88,6 +93,9 @@ public class SQLiteOperator {
                           String limit) throws JSONException {
 
         Cursor cursor = database.query(distinct, table, columns, selection, selectionArgs, groupBy, having, orderBy, limit);
+        if ((cursor instanceof SQLiteCursor) && Build.VERSION.SDK_INT >= 28) {
+            ((SQLiteCursor) cursor).setWindow(new CursorWindow(null, 1024*1024*5));
+        }
 
         JSONArray jsonArray = new JSONArray();
 

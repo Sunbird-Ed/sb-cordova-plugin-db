@@ -94,8 +94,7 @@ public class SQLiteOperator {
 
         Cursor cursor = database.query(distinct, table, columns, selection, selectionArgs, groupBy, having, orderBy, limit);
         if ((cursor instanceof SQLiteCursor) && Build.VERSION.SDK_INT >= 28) {
-            int l = 5242880;
-            ((SQLiteCursor) cursor).setWindow(new CursorWindow(null, l));
+            ((SQLiteCursor) cursor).setWindow(new CursorWindow(null, 1024*1024*5));
         }
 
         JSONArray jsonArray = new JSONArray();

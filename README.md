@@ -1,158 +1,116 @@
 # sb-cordova-plugin-db
-
-This plugin provides all neccesary elements to perform DataBase operations on Android and iOS.
+A plugin to acsess SQLite database in Sunbird Mobile app - available for the iOS and Android platforms.
 
 ## Installation
 
-With ionic:
+    cordova plugin add https://github.com/Sunbird-Ed/sb-cordova-plugin-db.git#<branch_name>
 
-`ionic cordova plugin add sb-cordova-plugin-db`
+To install it locally 
 
-for Cordova installation
+Clone the repo
+    
+    cordova plugin add <location_of plugin>/sb-cordova-plugin-db
 
-`cordova plugin add sb-cordova-plugin-db`
+# API Reference
 
-### init
-Initialises data base, by createing DataBase if not created or upgrading in case already created DataBase.
 
-Need to pass `dataBaseName` and `dataBaseVersion` as argument. On success, there are two things to handle, `onCreate` and `onUpgrade` as showed below.
-```js
-db.init(this.context.dbName,
-this.dBVersion,
-[],
-(value) => {
-    if (value.method === 'onCreate') {
-        // Handle newly created DataBase
-    } else if (value.method === 'onUpgrade') {
-        // Handle upgraded DataBase
-    }
-});
-```
+* [db](#module_db)
+    * [.init(dbName, dbVersion, migrations,successCallback)](#module_db.init)
+    * [.open(filePath, successCallback)](#module_db.open)
+    * [.close(isExternalDb, successCallback)](#module_db.close)
+    * [.read(distinct,table,columns,selection,selectionArgs,groupBy,having,orderBy,limit, useExternalDb,successCallback, errorCallback)](#module_db.close)
+    * [.execute(query,useExternalDb,successCallback, errorCallback)](#module_db.execute)
+    * [.insert(table, model,useExternalDb,successCallback, errorCallback)](#module_db.insert)
+    * [.update(table, whereClause, whereArgs, model,useExternalDb,successCallback, errorCallback)](#module_db.update)
+    * [.delete(table, whereClause, whereArgs, useExternalDb,successCallback, errorCallback)](#module_db.delete)
+    * [.beginTransaction()](#module_db.beginTransaction)
+    * [.endTransaction(isOperationSuccessful,useExternalDb)](#module_db.endTransaction)
+    * [.getDatabaseVersion()](#module_db.getDatabaseVersion)
+    * [.bulkInsert(query, dataModels)](#module_db.bulkInsert)
 
-### open
-Open DataBase file (.db) located on a specific location. Pass the `dbFilePath` as argument.
-```js
-db.open(dbFilePath,
-    (value) => {
-        resolve();
-    }, (value) => {
-        reject();
-    }
-);
-```
 
-### copyDatabase
-If DB copy has to be created, you need to pass the destination where new copy has to be created as argument `destinationPath`. On success you can access  the new copy of DB at new provided path.
-```js
-db.copyDatabase(destinationPath, (success: boolean) => {
-    console.log('Success');
-}, (error: string) => {
-  console.log('Error');
-});
-```
+## db
+### db.init(dbName, dbVersion, migrations, successCallback)
 
-### read
-Read data from a specific DataBase. Following options are avilable as argument to this method:
-`table` table name from where to read data
-`columns` columns from where to read data
-`whereClause` 
-`whereClauseArgs`
-`groupBy`
-`having`
-`orderBy`
-`limit`
-`useExternalDb`
-```js
-db.read(!!readQuery.distinct,
-  table,
-  columns,
-  whereClause,
-  whereClauseArgs,
-  groupBy,
-  having,
-  orderBy,
-  limit,
-  useExternalDb,
-  (json: any[]) => {
-  }, (error: string) => {
-    console.log('Error');
-});
-```
+Initializes the database.
 
-### execute
-To execute DB query provide the `query` as argument to this method. If you want to use external DataBase make `useExternalDb` as true.
-```js
-db.execute(query, useExternalDb, (value) => {
-  console.log('Query executed successfull ', value);
-}, error => {
-  console.log('Query failed to execute ', error);
-});
-```
+- `dbName` represents dbName.
+- `dbVersion` represents dbVersion.
+- `migrations` represents list of migrations to be executed.
 
-### insert
-For DB insert operation use this method. `table` on which table to execute insertion, `insertQuery` insert query to be executed and `useExternalDb` as true if table resides in external database.
-```js
-db.insert(table, insertQuery, useExternalDb,
-    (number: number) => {
-        console.log('Insert operation successfull');
-    }, (error: string) => {
-        console.log('Error occured while insert operation');
-    }
-);
-```
+### db.open(filePath, successCallback)
+Opens the database given in the filePath.
 
-### update
-To execute update operation on a database use this method with following arguments described below. Arguments are similar to create method.
-```js
-db.update(
-    table,
-    whereClause,
-    whereClauseArgs,
-    modelJson,
-    useExternalDb,
-    (count: any) => {
-        console.log('Success');
-    }, (error: string) => {
-        console.log('Error');
-    });
-```
+- `filePath` represents filePath of the database file.
 
-### delete
-For deletion use this method with folowing arguments shown below.
-```js
-const successCallback => (response) {
-  console.log('Success');
-};
-const errorCallback => (response) {
-  console.log('Success');
-};
+### db.close(isExternalDb, successCallback)
+Closes the database.
 
-db.delete(
-  table,
-  whereClause,
-  whereArgs,
-  useExternalDb,
-  successCallback,
-  errorCallback
-);
-```
+- `useExternalDb` represents whether the database is external or not.
 
-### beginTransaction
-To start a DataBase transaction call this method. It doesn't return any value, i.e it's return type is `void`.
-```js
-db.beginTransaction();
-```
+### db.read(distinct, table, columns, selection, selectionArgs,groupBy, having, orderBy,limit, useExternalDb, successCallback, errorCallback)
 
-### endTransaction
-To end/close a database transaction, call this method with 2 arguments i.e `isOperationSuccessful` and `useExternalDb`.
-```js
-db.endTransaction(isOperationSuccessful, useExternalDb);
-```
+- `distinct` represents  if you want each row to be unique, false otherwise..
+- `table` represents The table name to compile the query against.
+- `columns` represents a list of which columns to return. Passing null will return all columns, which is discouraged to prevent reading data from storage that isn't going to be used.
+- `selection` represents A filter declaring which rows to return, formatted as an SQL WHERE clause (excluding the WHERE itself). Passing null will return all rows for the given table.
+- `selectionArgs` You may include ?s in selection, which will be
+replaced by the values from selectionArgs, in order that they
+appear in the selection. The values will be bound as Strings.
+- `groupBy` represents a filter declaring how to group rows, formatted as an SQL GROUP BY clause (excluding the GROUP BY itself). Passing null will cause the rows to not be grouped..
+- `having` represents A filter declare which row groups to include in the cursor,if row grouping is being used, formatted as an SQL HAVING clause (excluding the HAVING itself). Passing null will cause all row groups to be included, and is required when row grouping is not being used.
+- `orderBy` represents How to order the rows, formatted as an SQL ORDER BY clause (excluding the ORDER BY itself). Passing null will use the default sort order, which may be unordered.
+- `limit` Limits the number of rows returned by the query,
+formatted as LIMIT clause. Passing null denotes no LIMIT clause.
+- `useExternalDb` represents whether the database is external or not.
 
-## Support
+### db.execute(query,useExternalDb,successCallback, errorCallback)
+Stops the scanner
 
-|Platform|
-|--|
-|Android|
-|iOS|
-|Web|
+- `query` represents the query to be executed.
+- `useExternalDb` represents whether the database is external or not.
+
+### db.insert(table, model,useExternalDb,successCallback, errorCallback)
+Stops the scanner
+
+- `table` represents the table to insert into.
+- `model` represents model to update in the table.
+- `useExternalDb` represents whether the database is external or not.
+
+### db.update(table, whereClause, whereArgs, model,useExternalDb,successCallback, errorCallback)
+Stops the scanner
+
+- `table` represents the table to update in.
+- `whereClause` represents the optional WHERE clause to apply when deleting. Passing null will delete all rows.
+- `whereArgs` represents arguments to be added in the whereClause.
+- `model` represents model to update in the table.
+- `useExternalDb` represents whether the database is external or not.
+
+### db.delete(table, whereClause, whereArgs, useExternalDb,successCallback, errorCallback)
+Stops the scanner
+
+- `table` represents the table to delete from.
+- `whereClause` represents the optional WHERE clause to apply when deleting. Passing null will delete all rows.
+- `whereArgs` represents arguments to be added in the whereClause.
+- `useExternalDb` represents whether the database is external or not.
+
+### db.beginTransaction()
+Begins a transaction in IMMEDIATE mode.
+
+### db.endTransaction(isOperationSuccessful,useExternalDb)
+End a transaction
+
+- `isOperationSuccessful` represents whether operation is succ.
+- `useExternalDb` represents whether the database is external or not.
+
+### db.getDatabaseVersion()
+Returns the database version.
+
+
+### db.bulkInsert(query, dataModels)
+Stops the scanner
+
+- `query` represents toolbar title.
+- `dataModels` represents toolbar title.
+
+

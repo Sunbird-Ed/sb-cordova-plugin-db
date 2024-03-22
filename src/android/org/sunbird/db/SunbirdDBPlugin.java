@@ -1,6 +1,6 @@
 package org.sunbird.db;
 
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
